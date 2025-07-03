@@ -1,0 +1,15 @@
+Hello/
+  ├── src/
+  │   ├── components/   # 组件
+  │   ├── contexts/     # 上下文
+  │   ├── navigation/   # 导航
+  │   ├── screens/      # 页面
+  │   ├── services/     # API服务
+  │   ├── utils/        # 工具函数
+  │   └── config/       # 配置
+  ├── ios/              # iOS平台
+  ├── android/          # Android平台
+  ├── App.tsx           # 应用入口
+  ├── package.json
+  ├── .env              # 环境变量
+  └── .env.example      # 环境变量示例

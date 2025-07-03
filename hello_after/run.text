@@ -1,0 +1,15 @@
+hello_after/
+  ├── bin/              # 服务器启动脚本
+  ├── config/           # 配置文件
+  │   ├── coze.config.js
+  │   └── xfyun.config.js
+  ├── controllers/      # 控制器
+  ├── database/         # 数据库模型和连接
+  ├── routes/           # API路由
+  ├── services/         # 业务服务
+  ├── views/            # 视图模板
+  ├── public/           # 静态文件
+  ├── app.js            # 应用入口
+  ├── package.json
+  ├── .env              # 环境变量
+  └── .env.example      # 环境变量示例
