@@ -65,9 +65,9 @@ const LoginScreen: React.FC<LoginScreenProps> = ({ navigation }) => {
       general: ''
     };
     
-    // 验证用户名
+    // 验证用户名/账号名
     if (!username.trim()) {
-      newErrors.username = '请输入用户名';
+      newErrors.username = userType === ROLES.USER ? '请输入用户名' : '请输入商家账号';
       isValid = false;
     }
     
@@ -99,17 +99,14 @@ const LoginScreen: React.FC<LoginScreenProps> = ({ navigation }) => {
       
       // 调用登录API
       const result = await login(
-        { username, password }
+        { username, password },
+        userType // 传递用户类型
       );
       
       if (result.success) {
-        // 登录成功，导航到首页或相应的页面
-        navigation.navigate('Home');
-        // 或者直接重置导航栈
-        // navigation.reset({
-        //   index: 0,
-        //   routes: [{ name: 'Home' }],
-        // });
+        // 登录成功，导航逻辑已经在 AppNavigator 中处理
+        console.log('登录成功，用户类型:', userType);
+        // 不需要在这里进行导航操作，AppNavigator 会根据角色自动导航到相应页面
       } else {
         // 登录失败
         setErrors({
@@ -136,6 +133,22 @@ const LoginScreen: React.FC<LoginScreenProps> = ({ navigation }) => {
     setUserType(type);
     // 清除之前的错误
     setErrors({ ...errors, general: '' });
+    // 清空表单
+    if (type !== userType) {
+      setUsername('');
+      setPassword('');
+    }
+  };
+  
+  /**
+   * 跳转到注册页面
+   */
+  const goToRegister = (): void => {
+    if (userType === ROLES.MERCHANT) {
+      navigation.navigate('MerchantRegister');
+    } else {
+      navigation.navigate('Register', { userType });
+    }
   };
   
   return (
@@ -201,10 +214,10 @@ const LoginScreen: React.FC<LoginScreenProps> = ({ navigation }) => {
         <View style={styles.formContainer}>
           {/* 用户名 */}
           <View style={styles.inputGroup}>
-            <Text style={styles.label}>用户名</Text>
+            <Text style={styles.label}>{userType === ROLES.USER ? '用户名' : '商家账号'}</Text>
             <TextInput
               style={[styles.input, errors.username && styles.inputError]}
-              placeholder="请输入用户名"
+              placeholder={userType === ROLES.USER ? '请输入用户名' : '请输入商家账号'}
               value={username}
               onChangeText={setUsername}
               autoCapitalize="none"
@@ -255,10 +268,10 @@ const LoginScreen: React.FC<LoginScreenProps> = ({ navigation }) => {
           {/* 注册链接 */}
           <View style={styles.registerContainer}>
             <Text style={styles.registerText}>还没有账号? </Text>
-            <TouchableOpacity
-              onPress={() => navigation.navigate('Register', { userType })}
-            >
-              <Text style={styles.registerLink}>立即注册</Text>
+            <TouchableOpacity onPress={goToRegister}>
+              <Text style={styles.registerLink}>
+                {userType === ROLES.MERCHANT ? '注册商家' : '注册账号'}
+              </Text>
             </TouchableOpacity>
           </View>
         </View>
@@ -267,15 +280,15 @@ const LoginScreen: React.FC<LoginScreenProps> = ({ navigation }) => {
   );
 };
 
-// 样式
+// 样式定义
 const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: '#f5f5f5',
   },
   scrollContainer: {
-    flexGrow: 1,
     padding: 20,
+    minHeight: '100%',
     justifyContent: 'center',
   },
   header: {
@@ -285,8 +298,8 @@ const styles = StyleSheet.create({
   title: {
     fontSize: 28,
     fontWeight: 'bold',
-    color: '#1677ff',
-    marginBottom: 10,
+    color: '#333',
+    marginBottom: 8,
   },
   subtitle: {
     fontSize: 16,
@@ -294,78 +307,87 @@ const styles = StyleSheet.create({
   },
   userTypeContainer: {
     flexDirection: 'row',
-    marginBottom: 20,
-    borderRadius: 8,
     backgroundColor: '#f0f0f0',
-    overflow: 'hidden',
+    borderRadius: 8,
+    marginBottom: 20,
   },
   userTypeButton: {
     flex: 1,
     paddingVertical: 12,
     alignItems: 'center',
+    borderRadius: 8,
   },
   activeUserType: {
     backgroundColor: '#1677ff',
   },
   userTypeText: {
     fontSize: 16,
+    fontWeight: '500',
     color: '#666',
   },
   activeUserTypeText: {
     color: '#fff',
-    fontWeight: '600',
   },
   errorContainer: {
     backgroundColor: '#ffebee',
+    borderRadius: 4,
     padding: 12,
-    borderRadius: 8,
-    marginBottom: 20,
+    marginBottom: 16,
   },
   errorText: {
     color: '#d32f2f',
-    fontSize: 14,
+    fontSize: 12,
   },
   formContainer: {
-    marginBottom: 20,
+    backgroundColor: '#fff',
+    borderRadius: 8,
+    padding: 20,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    elevation: 2,
   },
   inputGroup: {
     marginBottom: 16,
   },
   label: {
-    fontSize: 16,
+    fontSize: 14,
+    fontWeight: '500',
     color: '#333',
     marginBottom: 8,
   },
   input: {
-    backgroundColor: '#fff',
+    height: 48,
     borderWidth: 1,
     borderColor: '#ddd',
-    borderRadius: 8,
-    padding: 12,
+    borderRadius: 4,
+    paddingHorizontal: 12,
     fontSize: 16,
+    color: '#333',
   },
   inputError: {
     borderColor: '#d32f2f',
   },
   forgotPassword: {
     alignSelf: 'flex-end',
-    marginBottom: 24,
+    marginBottom: 20,
   },
   forgotPasswordText: {
     color: '#1677ff',
     fontSize: 14,
   },
   loginButton: {
+    height: 48,
     backgroundColor: '#1677ff',
-    borderRadius: 8,
-    paddingVertical: 14,
+    borderRadius: 4,
+    justifyContent: 'center',
     alignItems: 'center',
-    marginBottom: 16,
   },
   loginButtonText: {
     color: '#fff',
-    fontSize: 18,
-    fontWeight: '600',
+    fontSize: 16,
+    fontWeight: '500',
   },
   registerContainer: {
     flexDirection: 'row',
@@ -373,13 +395,13 @@ const styles = StyleSheet.create({
     marginTop: 16,
   },
   registerText: {
-    fontSize: 14,
     color: '#666',
+    fontSize: 14,
   },
   registerLink: {
-    fontSize: 14,
     color: '#1677ff',
-    fontWeight: '600',
+    fontSize: 14,
+    fontWeight: '500',
   },
 });
 

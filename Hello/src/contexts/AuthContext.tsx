@@ -20,6 +20,9 @@ interface UserInfo {
   username: string;
   role: ROLES;
   token?: string;
+  // 商家特有字段
+  accountName?: string;
+  name?: string; // 店铺名称
   [key: string]: any;
 }
 
@@ -43,8 +46,9 @@ interface AuthContextType {
   isAuthenticated: boolean;
   user: UserInfo | null;
   role: ROLES | null;
-  login: (credentials: { username: string; password: string }) => Promise<AuthResponse>;
+  login: (credentials: { username: string; password: string }, userType?: ROLES) => Promise<AuthResponse>;
   register: (userData: any, userType?: ROLES) => Promise<AuthResponse>;
+  merchantRegister: (merchantData: any) => Promise<AuthResponse>;
   logout: () => Promise<void>;
   loading: boolean;
   error: string | null;
@@ -97,17 +101,31 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   /**
    * 用户登录
    * @param {Object} credentials - 包含用户名和密码的对象
+   * @param {ROLES} userType - 用户类型，默认为USER
    * @returns {Promise<AuthResponse>} - 登录结果
    */
-  const login = async (credentials: { username: string; password: string }): Promise<AuthResponse> => {
+  const login = async (
+    credentials: { username: string; password: string },
+    userType: ROLES = ROLES.USER
+  ): Promise<AuthResponse> => {
     setLoading(true);
     setError(null);
     
     try {
-      console.log('尝试登录:', credentials.username);
+      console.log('尝试登录:', credentials.username, '类型:', userType);
+      
+      // 根据用户类型选择登录端点
+      const endpoint = userType === ROLES.MERCHANT 
+        ? API_PATHS.MERCHANT.LOGIN 
+        : API_PATHS.USER.LOGIN;
       
       // 调用登录API
-      const response = await apiClient.post(API_PATHS.USER.LOGIN, credentials) as ApiResponse;
+      // 对于商家登录，将username参数转换为accountName
+      const loginData = userType === ROLES.MERCHANT
+        ? { accountName: credentials.username, password: credentials.password }
+        : credentials;
+      
+      const response = await apiClient.post(endpoint, loginData) as ApiResponse;
       
       console.log('登录响应:', response);
       
@@ -117,8 +135,12 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
         const userData = response.data.user || response.data;
         const token = response.data.token || `temp_token_${Date.now()}`;
         
+        // 确保设置正确的角色
+        userData.role = userType;
+        
         console.log('解析的用户数据:', userData);
         console.log('解析的token:', token);
+        console.log('设置用户角色为:', userType);
         
         try {
           // 保存认证信息
@@ -233,6 +255,16 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       setLoading(false);
     }
   };
+  
+  /**
+   * 商家注册
+   * @param {Object} merchantData - 商家数据
+   * @returns {Promise<AuthResponse>} - 注册结果，包含success和可能的error
+   */
+  const merchantRegister = async (merchantData: any): Promise<AuthResponse> => {
+    // 确保设置正确的商家角色
+    return register(merchantData, ROLES.MERCHANT);
+  };
 
   /**
    * 用户登出
@@ -252,37 +284,35 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     }
   };
 
-  // 上下文值
-  const value = {
+  // 提供上下文值
+  const contextValue: AuthContextType = {
     isAuthenticated,
     user,
     role,
     login,
     register,
+    merchantRegister,
     logout,
     loading,
     error
   };
 
   return (
-    <AuthContext.Provider value={value}>
+    <AuthContext.Provider value={contextValue}>
       {children}
     </AuthContext.Provider>
   );
 };
 
 /**
- * 使用认证上下文的Hook
+ * 使用认证上下文的自定义Hook
  * @returns {AuthContextType} - 认证上下文
+ * @throws {Error} - 如果在AuthProvider之外使用，将抛出错误
  */
 export const useAuth = (): AuthContextType => {
   const context = useContext(AuthContext);
-  
   if (context === undefined) {
-    throw new Error('useAuth必须在AuthProvider内部使用');
+    throw new Error('useAuth必须在AuthProvider内使用');
   }
-  
   return context;
-};
-
-export default AuthContext; 
+}; 

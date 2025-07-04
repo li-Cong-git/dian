@@ -10,6 +10,7 @@ export type AuthStackParamList = {
   Login: undefined;
   Register: { userType?: ROLES };
   ForgotPassword: undefined;
+  MerchantRegister: undefined; // 添加商家注册路由
 };
 
 // 主标签导航参数类型
@@ -19,6 +20,15 @@ export type RootTabParamList = {
   Message: undefined;
   Video: undefined;
   Profile: undefined;
+};
+
+// 商家端标签导航参数类型
+export type MerchantTabParamList = {
+  MerchantHome: undefined;
+  MerchantProducts: undefined;
+  MerchantOrders: undefined;
+  MerchantChat: undefined;
+  MerchantProfile: undefined;
 };
 
 // 首页堆栈导航参数类型
@@ -35,7 +45,7 @@ export type CartStackParamList = {
 
 // 消息堆栈导航参数类型
 export type MessageStackParamList = {
-  MessageScreen: undefined;
+  MessageList: undefined;
   MessageDetail: { id: string; isRead: boolean };
 };
 
@@ -55,6 +65,33 @@ export type ProfileStackParamList = {
   OrderDetail: { id: string };
 };
 
+// 商家上传视频导航参数类型
+export type UploadStackParamList = {
+  UploadScreen: undefined;
+  UploadDetail: { id?: string };
+};
+
+// 商家聊天导航参数类型
+export type MerchantChatStackParamList = {
+  MerchantChatList: undefined;
+  MerchantChatDetail: { roomId: string; userId: string; userName: string };
+};
+
+// 商家中心导航参数类型
+export type MerchantCenterStackParamList = {
+  MerchantCenterScreen: undefined;
+  OrderManagement: { status?: string } | undefined;
+  OrderDetail: { id: string };
+  MerchantSettings: undefined;
+  ShopInfo: undefined;
+  ChangePassword: undefined;
+  Categories: undefined;
+  PaymentSettings: undefined;
+  ProductList: undefined;
+  AddProduct: undefined;
+  EditProduct: { productId: string };
+};
+
 // 合并所有导航参数类型
 export type RootStackParamList = 
   & AuthStackParamList
@@ -62,7 +99,10 @@ export type RootStackParamList =
   & CartStackParamList 
   & MessageStackParamList 
   & VideoStackParamList 
-  & ProfileStackParamList;
+  & ProfileStackParamList
+  & UploadStackParamList
+  & MerchantChatStackParamList
+  & MerchantCenterStackParamList;
 
 // 工具类型：获取路由名称
 export type RouteName = keyof RootStackParamList;

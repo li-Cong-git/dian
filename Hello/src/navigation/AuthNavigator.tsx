@@ -8,6 +8,7 @@ import { createStackNavigator } from '@react-navigation/stack';
 import LoginScreen from '../screens/Auth/LoginScreen';
 import RegisterScreen from '../screens/Auth/RegisterScreen';
 import ForgotPasswordScreen from '../screens/Auth/ForgotPasswordScreen';
+import MerchantRegisterScreen from '../screens/Auth/MerchantRegisterScreen';
 
 // 导入类型
 import { AuthStackParamList } from './types';
@@ -31,6 +32,7 @@ const AuthNavigator: React.FC = () => {
       <AuthStack.Screen name="Login" component={LoginScreen} />
       <AuthStack.Screen name="Register" component={RegisterScreen} />
       <AuthStack.Screen name="ForgotPassword" component={ForgotPasswordScreen} />
+      <AuthStack.Screen name="MerchantRegister" component={MerchantRegisterScreen} />
       {/* 登录成功后跳转到Home */}
       <AuthStack.Screen name="Home" component={() => null} options={{ headerShown: false }} />
     </AuthStack.Navigator>

@@ -2,6 +2,7 @@
  * API工具函数
  * 提供统一的API响应处理逻辑
  */
+import axios, { AxiosRequestConfig } from 'axios';
 
 // Coze响应格式类型定义
 interface CozeResponseContent {
@@ -21,6 +22,41 @@ interface CozeResponseData {
   output?: string;
   [key: string]: any;
 }
+
+// 创建axios实例
+const axiosInstance = axios.create({
+  timeout: 30000, // 30秒超时
+  headers: {
+    'Content-Type': 'application/json',
+  },
+});
+
+// 请求拦截器 - 添加认证令牌
+axiosInstance.interceptors.request.use(
+  (config) => {
+    // 从本地存储获取令牌
+    const token = localStorage.getItem('token');
+    if (token && config.headers) {
+      config.headers['Authorization'] = `Bearer ${token}`;
+    }
+    return config;
+  },
+  (error) => {
+    return Promise.reject(error);
+  }
+);
+
+// 响应拦截器 - 统一处理错误
+axiosInstance.interceptors.response.use(
+  (response) => {
+    // 直接返回数据部分
+    return response.data;
+  },
+  (error) => {
+    console.error('API请求错误:', error);
+    return Promise.reject(error);
+  }
+);
 
 /**
  * 处理Coze响应数据
@@ -132,4 +168,46 @@ export const isSuccessResponse = (response: any): boolean => {
   
   // 默认假定有data字段且无错误信息时为成功
   return !!response.data && !response.error && !response.message;
+};
+
+/**
+ * GET请求
+ * @param url 请求URL
+ * @param config 请求配置
+ * @returns 响应数据
+ */
+export const apiGet = async (url: string, config?: AxiosRequestConfig) => {
+  return axiosInstance.get(url, config);
+};
+
+/**
+ * POST请求
+ * @param url 请求URL
+ * @param data 请求数据
+ * @param config 请求配置
+ * @returns 响应数据
+ */
+export const apiPost = async (url: string, data?: any, config?: AxiosRequestConfig) => {
+  return axiosInstance.post(url, data, config);
+};
+
+/**
+ * PUT请求
+ * @param url 请求URL
+ * @param data 请求数据
+ * @param config 请求配置
+ * @returns 响应数据
+ */
+export const apiPut = async (url: string, data?: any, config?: AxiosRequestConfig) => {
+  return axiosInstance.put(url, data, config);
+};
+
+/**
+ * DELETE请求
+ * @param url 请求URL
+ * @param config 请求配置
+ * @returns 响应数据
+ */
+export const apiDelete = async (url: string, config?: AxiosRequestConfig) => {
+  return axiosInstance.delete(url, config);
 }; 

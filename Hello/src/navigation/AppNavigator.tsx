@@ -14,11 +14,17 @@ import MessageNavigator from './MessageNavigator';
 import VideoNavigator from './VideoNavigator';
 import ProfileNavigator from './ProfileNavigator';
 
+// 导入商家导航器
+import MerchantTabNavigator from './MerchantNavigator';
+
 // 导入身份验证导航器
 import AuthNavigator from './AuthNavigator';
 
 // 导入权限管理
-import { useAuth } from '../contexts/AuthContext';
+import { useAuth, ROLES } from '../contexts/AuthContext';
+
+// 导入聊天上下文提供者
+import { ChatProvider } from '../contexts/ChatContext';
 
 // 创建底部标签导航
 const Tab = createBottomTabNavigator<RootTabParamList>();
@@ -142,9 +148,11 @@ const UserTabNavigator = () => {
 // 创建导航器
 const Stack = createStackNavigator();
 
-// 主导航器
-const AppNavigator = () => {
+// 主导航器内容
+const NavigationContent = () => {
   const { isAuthenticated, role } = useAuth();
+  
+  console.log('当前用户角色:', role); // 调试用
 
   return (
     <Stack.Navigator
@@ -155,11 +163,23 @@ const AppNavigator = () => {
       {!isAuthenticated ? (
         // 未登录状态 - 显示身份验证相关页面
         <Stack.Screen name="Auth" component={AuthNavigator} />
+      ) : role === ROLES.MERCHANT ? (
+        // 商家登录状态 - 显示商家端页面
+        <Stack.Screen name="MerchantMain" component={MerchantTabNavigator} />
       ) : (
-        // 用户登录状态 - 显示用户端页面
+        // 普通用户登录状态 - 显示用户端页面
         <Stack.Screen name="UserMain" component={UserTabNavigator} />
       )}
     </Stack.Navigator>
+  );
+};
+
+// 主导航器
+const AppNavigator = () => {
+  return (
+    <ChatProvider>
+      <NavigationContent />
+    </ChatProvider>
   );
 };
 

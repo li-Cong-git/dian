@@ -1,81 +1,68 @@
 /**
- * 消息详情屏幕
- * 支持WebSocket实时聊天
+ * 商家聊天详情界面
+ * 支持WebSocket实时通信
  */
-import React, { useEffect, useState, useRef } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import {
   View,
   Text,
   StyleSheet,
-  ScrollView,
-  TouchableOpacity,
   TextInput,
+  TouchableOpacity,
+  FlatList,
   KeyboardAvoidingView,
   Platform,
-  ActivityIndicator,
-  FlatList
+  ActivityIndicator
 } from 'react-native';
-import { StackScreenProps } from '@react-navigation/stack';
-import { MessageStackParamList } from '../../navigation/types';
+import { StackNavigationProp } from '@react-navigation/stack';
+import { RouteProp } from '@react-navigation/native';
+import { MerchantChatStackParamList } from '../../navigation/types';
 import { useAuth } from '../../contexts/AuthContext';
-import { useChat, ChatMessage, ChatRoom } from '../../contexts/ChatContext';
+import { useChat, ChatMessage } from '../../contexts/ChatContext';
 import chatService from '../../services/chat.service';
 
 // 定义组件属性类型
-type MessageDetailScreenProps = StackScreenProps<MessageStackParamList, 'MessageDetail'>;
-
-/**
- * 消息详情类型
- */
-interface MessageDetail {
-  id: string;
-  title: string;
-  content: string;
-  time: string;
-  type: 'system' | 'promotion' | 'order' | 'other';
-  isRead: boolean;
-  sender?: string;
-  actions?: Array<{
-    label: string;
-    type: 'primary' | 'default' | 'danger';
-    action: string;
-  }>;
+interface MerchantChatDetailScreenProps {
+  navigation: StackNavigationProp<MerchantChatStackParamList, 'MerchantChatDetail'>;
+  route: RouteProp<MerchantChatStackParamList, 'MerchantChatDetail'>;
 }
 
 /**
- * 消息详情屏幕组件
+ * 商家聊天详情界面
  */
-const MessageDetailScreen: React.FC<MessageDetailScreenProps> = ({ route, navigation }) => {
-  const { id: roomId, isRead } = route.params;
+const MerchantChatDetailScreen: React.FC<MerchantChatDetailScreenProps> = ({ navigation, route }) => {
+  const { roomId, userId, userName } = route.params;
   const { user } = useAuth();
   const { joinRoom, leaveRoom, sendMessage, messages, currentRoom } = useChat();
-
-  const [loading, setLoading] = useState(true);
-  const [sending, setSending] = useState(false);
-  const [inputMessage, setInputMessage] = useState('');
-  const [chatRoom, setChatRoom] = useState<ChatRoom | null>(null);
-  const [merchantId, setMerchantId] = useState<string>('');
-
-  // 引用
+  
+  const [loading, setLoading] = useState<boolean>(true);
+  const [inputMessage, setInputMessage] = useState<string>('');
+  const [sending, setSending] = useState<boolean>(false);
+  
   const flatListRef = useRef<FlatList>(null);
   const mounted = useRef(true);
+  
+  // 设置导航标题
+  useEffect(() => {
+    navigation.setOptions({
+      title: userName,
+      headerTitleStyle: {
+        fontSize: 18,
+        fontWeight: '600',
+      }
+    });
+  }, [navigation, userName]);
   
   // 初始化
   useEffect(() => {
     mounted.current = true;
-
-    // 加载聊天室信息
-    loadChatRoom();
+    
+    console.log('初始化商家聊天详情页面，roomId:', roomId, 'userId:', userId);
     
     // 加入聊天室
     if (roomId) {
       joinRoom(roomId);
     }
-    
-    // 设置标题
-    navigation.setOptions({
-      title: chatRoom?.merchantInfo?.name || '商家聊天',
-    });
     
     // 清理
     return () => {
@@ -84,16 +71,7 @@ const MessageDetailScreen: React.FC<MessageDetailScreenProps> = ({ route, naviga
         leaveRoom(roomId);
       }
     };
-  }, [roomId]);
-
-  // 聊天室加载成功后更新标题
-  useEffect(() => {
-    if (chatRoom) {
-      navigation.setOptions({
-        title: chatRoom.merchantInfo.name || '商家聊天',
-      });
-    }
-  }, [chatRoom, navigation]);
+  }, []);
   
   // 消息列表变化时滚动到底部
   useEffect(() => {
@@ -104,58 +82,24 @@ const MessageDetailScreen: React.FC<MessageDetailScreenProps> = ({ route, naviga
     }
     setLoading(false);
   }, [messages, roomId]);
-
-  /**
-   * 加载聊天室信息
-   */
-  const loadChatRoom = async () => {
-    try {
-      // 这里应该调用API获取聊天室信息
-      // 目前使用模拟数据
-      const mockChatRoom: ChatRoom = {
-        roomId,
-        userId: user?._id || '',
-        merchantId: 'merchant_123', // 实际环境中应从API获取
-        userInfo: {
-          username: user?.username || '',
-          avatar: user?.avatar || '',
-        },
-        merchantInfo: {
-          name: '示例商家',
-          accountName: 'merchant_account',
-        },
-        unreadCount: {
-          user: 0,
-          merchant: 0
-        },
-        status: 'active',
-        createdAt: new Date(),
-        updatedAt: new Date()
-      };
-      
-      setChatRoom(mockChatRoom);
-      setMerchantId(mockChatRoom.merchantId);
-      setLoading(false);
-    } catch (error) {
-      console.error('加载聊天室信息失败:', error);
-      setLoading(false);
-    }
-  };
   
   /**
-   * 处理发送消息
+   * 发送消息
    */
   const handleSendMessage = async () => {
-    if (!inputMessage.trim() || sending || !user) return;
+    if (!inputMessage.trim() || sending || !user || !roomId) {
+      return;
+    }
     
     try {
       setSending(true);
+      console.log('发送消息:', inputMessage, '到roomId:', roomId, '接收者:', userId);
       
-      // 发送消息
+      // 使用WebSocket发送消息
       const success = await sendMessage(
         roomId,
         inputMessage.trim(),
-        merchantId,
+        userId
       );
       
       // 成功发送后清空输入框
@@ -173,22 +117,27 @@ const MessageDetailScreen: React.FC<MessageDetailScreenProps> = ({ route, naviga
    * 渲染消息项
    */
   const renderMessageItem = ({ item }: { item: ChatMessage }) => {
-    const isFromSelf = item.senderType === 'user' && user?._id === item.senderId;
+    const isFromSelf = item.senderType === 'merchant' && user?._id === item.senderId;
     
     return (
       <View
         style={[
           styles.messageContainer,
-          isFromSelf ? styles.userMessageContainer : styles.merchantMessageContainer
+          isFromSelf ? styles.merchantMessageContainer : styles.userMessageContainer
         ]}
       >
         <View
           style={[
             styles.messageBubble,
-            isFromSelf ? styles.userMessageBubble : styles.merchantMessageBubble
+            isFromSelf ? styles.merchantMessageBubble : styles.userMessageBubble
           ]}
         >
-          <Text style={styles.messageText}>{item.content}</Text>
+          <Text style={[
+            styles.messageText,
+            isFromSelf ? styles.merchantMessageText : styles.userMessageText
+          ]}>
+            {item.content}
+          </Text>
         </View>
         <Text style={styles.timestamp}>
           {typeof item.createdAt === 'string'
@@ -227,6 +176,7 @@ const MessageDetailScreen: React.FC<MessageDetailScreenProps> = ({ route, naviga
       style={styles.container}
       keyboardVerticalOffset={Platform.OS === 'ios' ? 90 : 0}
     >
+      {/* 聊天记录列表 */}
       {loading ? renderLoading() : (
         <FlatList
           ref={flatListRef}
@@ -307,12 +257,12 @@ const styles = StyleSheet.create({
     maxWidth: '80%',
   },
   userMessageContainer: {
-    alignSelf: 'flex-end',
-    alignItems: 'flex-end',
-  },
-  merchantMessageContainer: {
     alignSelf: 'flex-start',
     alignItems: 'flex-start',
+  },
+  merchantMessageContainer: {
+    alignSelf: 'flex-end',
+    alignItems: 'flex-end',
   },
   messageBubble: {
     padding: 12,
@@ -320,19 +270,21 @@ const styles = StyleSheet.create({
     maxWidth: '100%',
   },
   userMessageBubble: {
-    backgroundColor: '#1677ff',
-    borderTopRightRadius: 4,
-  },
-  merchantMessageBubble: {
     backgroundColor: '#fff',
     borderTopLeftRadius: 4,
   },
+  merchantMessageBubble: {
+    backgroundColor: '#1677ff',
+    borderTopRightRadius: 4,
+  },
   messageText: {
     fontSize: 16,
-    color: '#333',
     lineHeight: 22,
   },
   userMessageText: {
+    color: '#333',
+  },
+  merchantMessageText: {
     color: '#fff',
   },
   timestamp: {
@@ -377,4 +329,4 @@ const styles = StyleSheet.create({
   },
 });
 
-export default MessageDetailScreen; 
+export default MerchantChatDetailScreen; 

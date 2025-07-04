@@ -4,13 +4,13 @@
  */
 
 // 定义不同环境的API基础URL
-const API_BASE_URL = {
+const API_URLS = {
   // 本地开发环境
   development: 'http://localhost:3000/api/v1',
   // 模拟器环境 - Android模拟器通过10.0.2.2访问宿主机
   emulator: 'http://10.0.2.2:3000/api/v1',
   // 使用宿主机实际IP地址 - 适用于某些网络配置下的模拟器
-  hostIp: 'http://192.168.145.116:3000/api/v1',
+  hostIp: 'http://192.168.192.1:3000/api/v1',
   // 测试环境
   testing: 'https://api-test.goshop.com/api/v1',
   // 生产环境
@@ -31,16 +31,19 @@ const isRunningInEmulator = () => {
 const getApiBaseUrl = () => {
   // 如果在模拟器中运行，使用宿主机IP环境的URL
   if (isRunningInEmulator()) {
-    return API_BASE_URL.hostIp;
+    return API_URLS.hostIp;
   }
   // 否则根据环境变量选择URL
-  return API_BASE_URL[CURRENT_ENV as keyof typeof API_BASE_URL] || API_BASE_URL.development;
+  return API_URLS[CURRENT_ENV as keyof typeof API_URLS] || API_URLS.development;
 };
+
+// 导出API基础URL供其他模块使用
+export const API_BASE_URL = getApiBaseUrl();
 
 // 导出配置
 export default {
   // API基础URL
-  apiBaseUrl: getApiBaseUrl(),
+  apiBaseUrl: API_BASE_URL,
   
   // 是否为开发环境
   isDevelopment: CURRENT_ENV === 'development',

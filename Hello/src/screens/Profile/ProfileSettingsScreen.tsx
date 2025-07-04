@@ -13,14 +13,18 @@ import {
 } from 'react-native';
 import { StackScreenProps } from '@react-navigation/stack';
 import { ProfileStackParamList } from '../../navigation/types';
+import { useAuth } from '../../contexts/AuthContext';
 
 // 定义组件属性类型
-type ProfileSettingsScreenProps = StackScreenProps<ProfileStackParamList, 'ProfileSettings'>;
+type ProfileSettingsScreenProps = StackScreenProps<ProfileStackParamList, 'Settings'>;
 
 /**
  * 个人设置屏幕组件
  */
 const ProfileSettingsScreen: React.FC<ProfileSettingsScreenProps> = ({ navigation }) => {
+  // 获取认证上下文
+  const { logout } = useAuth();
+
   // 开关设置状态
   const [settings, setSettings] = useState({
     pushNotification: true,
@@ -96,7 +100,19 @@ const ProfileSettingsScreen: React.FC<ProfileSettingsScreenProps> = ({ navigatio
           '确定要退出登录吗？',
           [
             { text: '取消', style: 'cancel' },
-            { text: '确定', onPress: () => console.log('用户确认退出登录') },
+            { 
+              text: '确定', 
+              onPress: async () => {
+                try {
+                  await logout();
+                  // 退出登录后不需要导航，因为AuthContext的状态变化会触发AppNavigator中的条件渲染
+                  console.log('用户已成功退出登录');
+                } catch (error) {
+                  console.error('退出登录失败:', error);
+                  Alert.alert('退出失败', '退出登录时发生错误，请稍后重试');
+                }
+              }
+            },
           ]
         );
         break;

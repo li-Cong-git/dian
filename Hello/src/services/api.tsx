@@ -173,14 +173,16 @@ const API_PATHS = {
     LOGIN: '/merchants/login',
     PROFILE: '/merchants/profile/get',
     UPDATE_PROFILE: '/merchants/profile/update',
-    PRODUCTS: '/merchants/products/manage'
+    PRODUCTS: '/merchants/products/manage',
+    CHANGE_PASSWORD: '/merchants/password/change',
+    UPLOAD_LOGO: '/merchants/logo/upload'
   },
   // 商品相关
   PRODUCT: {
     LIST: '/products/list',
     DETAIL: '/products/detail',
     SEARCH: '/products/search',
-    CATEGORIES: '/products/categories'
+    CATEGORIES: '/merchants/categories'
   },
   // 订单相关
   ORDER: {
@@ -189,7 +191,13 @@ const API_PATHS = {
     DETAIL: '/orders/detail',
     CANCEL: '/orders/cancel',
     PAY: '/orders/pay',
-    CONFIRM: '/orders/confirm'
+    SHIP: '/orders/ship',
+    CONFIRM: '/orders/confirm',
+    COMPLETE: '/orders/complete',
+    MERCHANT: {
+      LIST: '/orders/list',
+      STATS: '/orders/merchant/stats'
+    }
   },
   // 购物车相关
   CART: {

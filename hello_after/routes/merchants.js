@@ -5,6 +5,41 @@ const { Order, Logistics } = require('../database/Logistics');
 const crypto = require('crypto');
 
 /**
+ * 商品分类相关路由
+ */
+// 获取商品分类列表
+router.get('/categories', async (req, res) => {
+  try {
+    // 定义默认分类列表
+    const defaultCategories = [
+      { id: 'clothing', name: '服装' },
+      { id: 'electronics', name: '电子产品' },
+      { id: 'food', name: '食品' },
+      { id: 'furniture', name: '家具' },
+      { id: 'books', name: '图书' },
+      { id: 'beauty', name: '美妆' },
+      { id: 'sports', name: '运动户外' },
+      { id: 'toys', name: '玩具' },
+      { id: 'health', name: '健康保健' },
+      { id: 'others', name: '其他' }
+    ];
+    
+    // 返回分类列表
+    res.json({
+      success: true,
+      data: defaultCategories
+    });
+  } catch (error) {
+    console.error('获取商品分类错误:', error);
+    res.status(500).json({
+      success: false,
+      message: '获取商品分类失败',
+      error: error.message
+    });
+  }
+});
+
+/**
  * 商家认证相关路由
  */
 // 商家注册
@@ -83,22 +118,24 @@ router.post('/register', async (req, res) => {
 // 商家登录
 router.post('/login', async (req, res) => {
   try {
-    const { username, password } = req.body;
+    const { accountName, password } = req.body;
     
     // 验证必填字段
-    if (!username || !password) {
+    if (!accountName || !password) {
       return res.status(400).json({
         success: false,
-        message: '用户名和密码为必填项'
+        message: '账户名和密码为必填项'
       });
     }
-    
     // 查找商家
-    const merchant = await Merchant.findOne({ username });
-    if (!merchant) {
+    const merchant = await Merchant.find({accountName: accountName});
+    console.log(merchant);
+    
+    
+    if (!merchant[0]) {
       return res.status(400).json({
         success: false,
-        message: '用户名或密码错误'
+        message: '账户名或密码错误'
       });
     }
     
@@ -108,35 +145,25 @@ router.post('/login', async (req, res) => {
       .update(password)
       .digest('hex');
     
-    if (merchant.password !== hashedPassword) {
+    if (merchant[0].password !== hashedPassword) {
+      console.log(hashedPassword);
+      
       return res.status(400).json({
         success: false,
-        message: '用户名或密码错误'
+        message: '账户名或密码错误'
       });
     }
     
     // 检查账户状态
-    if (merchant.status !== 'active') {
+    if (merchant[0].status !== 'active') {
       return res.status(403).json({
         success: false,
-        message: merchant.status === 'pending' 
-          ? '账户正在审核中，请耐心等待' 
-          : '账户已被禁用'
-      });
-    }
-    
-    // 检查店铺状态
-    if (merchant.shopInfo.status !== 'active') {
-      return res.status(403).json({
-        success: false,
-        message: merchant.shopInfo.status === 'pending'
-          ? '店铺正在审核中，请耐心等待'
-          : '店铺已被禁用'
+        message: '账户已被暂停或关闭'
       });
     }
     
     // 登录成功，返回商家信息（不包含密码）
-    const merchantWithoutPassword = merchant.toObject();
+    const merchantWithoutPassword = merchant[0].toObject();
     delete merchantWithoutPassword.password;
     
     res.json({
@@ -248,6 +275,244 @@ router.post('/profile/update', async (req, res) => {
 /**
  * 商品管理相关路由
  */
+// 商品管理统一接口
+router.post('/products/manage', async (req, res) => {
+  try {
+    const { action, merchantId, productId, product, productData, page = 1, limit = 10, status, category, sort, order } = req.body;
+    
+    if (!action) {
+      return res.status(400).json({
+        success: false,
+        message: '缺少action参数'
+      });
+    }
+    
+    // 商品列表查询
+    if (action === 'list') {
+      if (!merchantId) {
+        return res.status(400).json({
+          success: false,
+          message: '缺少merchantId参数'
+        });
+      }
+      
+      // 构建查询条件
+      const query = { merchantId };
+      if (status) query.status = status;
+      if (category) query.category = category;
+      
+      // 构建排序
+      const sortOption = {};
+      if (sort && order) {
+        sortOption[sort] = order === 'desc' ? -1 : 1;
+      } else {
+        sortOption.createdAt = -1; // 默认按创建时间倒序
+      }
+      
+      // 分页查询
+      const skip = (page - 1) * limit;
+      
+      // 执行查询
+      const products = await Product.find(query)
+        .sort(sortOption)
+        .skip(skip)
+        .limit(parseInt(limit));
+        
+      // 获取总数
+      const total = await Product.countDocuments(query);
+      
+      return res.json({
+        success: true,
+        data: {
+          products,
+          total,
+          page: parseInt(page),
+          limit: parseInt(limit),
+          pages: Math.ceil(total / limit)
+        }
+      });
+    }
+    
+    // 添加商品
+    if (action === 'add') {
+      console.log('添加商品请求数据:', product);
+      
+      if (!product || !product.merchantId) {
+        return res.status(400).json({
+          success: false,
+          message: '商品信息不完整'
+        });
+      }
+      
+      try {
+        // 确保images是字符串数组
+        if (product.images && Array.isArray(product.images)) {
+          // 检查数组中是否有对象，如果有则将其转换为字符串
+          product.images = product.images.map(img => {
+            if (typeof img === 'object' && img !== null && img.url) {
+              console.log('转换image对象为URL:', img);
+              return img.url;
+            }
+            return String(img);
+          });
+        } else if (!product.images) {
+          product.images = [];
+        }
+        
+        console.log('处理后的images数据:', product.images);
+        
+        const newProduct = new Product(product);
+        console.log('准备保存的商品数据:', newProduct);
+        await newProduct.save();
+        
+        return res.status(201).json({
+          success: true,
+          message: '商品添加成功',
+          data: newProduct
+        });
+      } catch (err) {
+        console.error('保存商品时出错:', err);
+        return res.status(500).json({
+          success: false,
+          message: '保存商品失败',
+          error: err.message
+        });
+      }
+    }
+    
+    // 更新商品
+    if (action === 'update') {
+      if (!productId || !productData) {
+        return res.status(400).json({
+          success: false,
+          message: '缺少productId或更新数据'
+        });
+      }
+      
+      const updatedProduct = await Product.findByIdAndUpdate(
+        productId,
+        { $set: productData },
+        { new: true }
+      );
+      
+      if (!updatedProduct) {
+        return res.status(404).json({
+          success: false,
+          message: '商品不存在'
+        });
+      }
+      
+      return res.json({
+        success: true,
+        message: '商品更新成功',
+        data: updatedProduct
+      });
+    }
+    
+    // 删除商品
+    if (action === 'delete') {
+      if (!productId || !merchantId) {
+        return res.status(400).json({
+          success: false,
+          message: '缺少productId或merchantId参数'
+        });
+      }
+      
+      // 检查商品是否属于该商家
+      const product = await Product.findById(productId);
+      if (!product) {
+        return res.status(404).json({
+          success: false,
+          message: '商品不存在'
+        });
+      }
+      
+      if (product.merchantId.toString() !== merchantId) {
+        return res.status(403).json({
+          success: false,
+          message: '无权操作此商品'
+        });
+      }
+      
+      // 物理删除商品
+      await Product.findByIdAndDelete(productId);
+      
+      return res.json({
+        success: true,
+        message: '商品删除成功'
+      });
+    }
+    
+    // 获取商品详情
+    if (action === 'detail') {
+      if (!productId) {
+        return res.status(400).json({
+          success: false,
+          message: '缺少productId参数'
+        });
+      }
+      
+      const product = await Product.findById(productId);
+      if (!product) {
+        return res.status(404).json({
+          success: false,
+          message: '商品不存在'
+        });
+      }
+      
+      return res.json({
+        success: true,
+        data: product
+      });
+    }
+    
+    // 未知操作
+    return res.status(400).json({
+      success: false,
+      message: '不支持的action类型'
+    });
+    
+  } catch (error) {
+    console.error('商品管理操作错误:', error);
+    res.status(500).json({
+      success: false,
+      message: '操作失败',
+      error: error.message
+    });
+  }
+});
+
+// 获取商品分类
+router.get('/categories', async (req, res) => {
+  try {
+    // 返回预定义的商品分类
+    const categories = [
+      { id: 'food', name: '食品' },
+      { id: 'clothing', name: '服装' },
+      { id: 'electronics', name: '电子产品' },
+      { id: 'home', name: '家居用品' },
+      { id: 'beauty', name: '美妆个护' },
+      { id: 'sports', name: '运动户外' },
+      { id: 'toys', name: '玩具' },
+      { id: 'books', name: '图书' },
+      { id: 'digital', name: '数码产品' },
+      { id: 'other', name: '其他' }
+    ];
+    
+    return res.json({
+      success: true,
+      data: categories
+    });
+  } catch (error) {
+    console.error('获取商品分类错误:', error);
+    res.status(500).json({
+      success: false,
+      message: '获取商品分类失败',
+      error: error.message
+    });
+  }
+});
+
 // 创建新商品
 router.post('/products/create', async (req, res) => {
   try {
@@ -387,28 +652,35 @@ router.post('/products/list', async (req, res) => {
 // 获取商品详情
 router.post('/products/detail', async (req, res) => {
   try {
-    const { merchantId, productId } = req.body;
+    const { productId, merchantId } = req.body;
     
-    if (!merchantId || !productId) {
+    if (!productId) {
       return res.status(400).json({
         success: false,
-        message: '缺少商家ID或商品ID参数'
+        message: '缺少商品ID参数'
       });
     }
     
+    console.log('获取商品详情请求:', { productId, merchantId });
+    
+    let query = { _id: productId };
+    // 如果提供了商家ID，则添加到查询条件
+    if (merchantId) {
+      query.merchantId = merchantId;
+    }
+    
     // 查询商品
-    const product = await Product.findOne({
-      _id: productId,
-      merchantId
-    });
+    const product = await Product.findOne(query);
     
     if (!product) {
+      console.log('商品不存在:', productId);
       return res.status(404).json({
         success: false,
         message: '商品不存在'
       });
     }
     
+    console.log('找到商品:', product.name);
     res.json({
       success: true,
       data: product
@@ -1008,5 +1280,118 @@ function getDefaultDescription(status) {
       return '物流状态更新';
   }
 }
+
+// 修改密码
+router.post('/password/change', async (req, res) => {
+  try {
+    const { merchantId, currentPassword, newPassword } = req.body;
+    
+    if (!merchantId || !currentPassword || !newPassword) {
+      return res.status(400).json({
+        success: false,
+        message: '缺少必要参数'
+      });
+    }
+    
+    // 查找商家
+    const merchant = await Merchant.findById(merchantId);
+    
+    if (!merchant) {
+      return res.status(404).json({
+        success: false,
+        message: '商家不存在'
+      });
+    }
+    
+    // 验证当前密码
+    const hashedCurrentPassword = crypto
+      .createHash('md5')
+      .update(currentPassword)
+      .digest('hex');
+    
+    if (merchant.password !== hashedCurrentPassword) {
+      return res.status(400).json({
+        success: false,
+        message: '当前密码不正确'
+      });
+    }
+    
+    // 生成新密码的哈希
+    const hashedNewPassword = crypto
+      .createHash('md5')
+      .update(newPassword)
+      .digest('hex');
+    
+    // 更新密码
+    merchant.password = hashedNewPassword;
+    await merchant.save();
+    
+    res.json({
+      success: true,
+      message: '密码修改成功'
+    });
+  } catch (error) {
+    console.error('修改密码错误:', error);
+    res.status(500).json({
+      success: false,
+      message: '修改密码失败',
+      error: error.message
+    });
+  }
+});
+
+// 上传商家Logo
+router.post('/logo/upload', async (req, res) => {
+  try {
+    const { merchantId, logoBase64 } = req.body;
+    
+    if (!merchantId || !logoBase64) {
+      return res.status(400).json({
+        success: false,
+        message: '缺少必要参数'
+      });
+    }
+    
+    // 查找商家
+    const merchant = await Merchant.findById(merchantId);
+    
+    if (!merchant) {
+      return res.status(404).json({
+        success: false,
+        message: '商家不存在'
+      });
+    }
+    
+    // 在实际应用中，这里应该处理图片上传到云存储
+    // 例如上传到OSS、S3等服务，并获取URL
+    // 为了演示，我们假设已经处理好了，直接返回一个模拟的URL
+    
+    // 模拟上传延迟
+    await new Promise(resolve => setTimeout(resolve, 500));
+    
+    // 生成一个随机的logo URL
+    const timestamp = Date.now();
+    const logoUrl = `https://example.com/merchant-logos/${merchantId}_${timestamp}.jpg`;
+    
+    // 更新商家Logo
+    merchant.logo = logoUrl;
+    await merchant.save();
+    
+    res.json({
+      success: true,
+      message: 'Logo上传成功',
+      data: {
+        logoUrl
+      }
+    });
+  } catch (error) {
+    console.error('上传Logo错误:', error);
+    res.status(500).json({
+      success: false,
+      message: '上传Logo失败',
+      error: error.message
+    });
+  }
+});
 
 module.exports = router; 

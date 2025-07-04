@@ -68,6 +68,32 @@ const verifyToken = (req, res, next) => {
   }
 };
 
+/**
+ * 角色认证中间件
+ * @param {Array<String>} roles - 允许访问的角色数组
+ * @returns {Function} 中间件函数
+ */
+const authMiddleware = (roles) => {
+  return (req, res, next) => {
+    // 首先验证令牌
+    verifyToken(req, res, () => {
+      // 令牌验证通过后，检查用户角色
+      const userRole = req.user.role;
+      
+      // 检查用户是否具有所需角色
+      if (roles.includes(userRole)) {
+        next(); // 继续下一个中间件
+      } else {
+        res.status(403).json({
+          success: false,
+          message: '您没有权限访问此资源'
+        });
+      }
+    });
+  };
+};
+
 module.exports = {
-  verifyToken
+  verifyToken,
+  authMiddleware
 }; 

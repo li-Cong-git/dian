@@ -11,9 +11,13 @@ var cors = require('cors');
 var indexRouter = require('./routes/index');
 var usersRouter = require('./routes/users');
 var merchantsRouter = require('./routes/merchants');
+var productsRouter = require('./routes/products');
+var ordersRouter = require('./routes/orders');
 var logisticsRouter = require('./routes/logistics');
 var speechRouter = require('./routes/speech');
 var cozeRouter = require('./routes/coze');
+var videosRouter = require('./routes/videos');
+var chatRouter = require('./routes/chat');
 
 var app = express();
 
@@ -26,6 +30,8 @@ app.use(express.json());
 app.use(express.urlencoded({ extended: false }));
 app.use(cookieParser());
 app.use(express.static(path.join(__dirname, 'public')));
+app.use('/uploads/videos', express.static(path.join(__dirname, 'uploads', 'videos')));
+app.use('/uploads/thumbnails', express.static(path.join(__dirname, 'uploads', 'thumbnails')));
 
 // 在所有路由之前配置CORS，确保跨域请求能够正常工作
 // 增强CORS配置，允许所有来源的请求，特别是来自模拟器的请求
@@ -65,10 +71,19 @@ app.use(function(req, res, next) {
 
 app.use('/', indexRouter);
 app.use(`${API_PREFIX}/users`, usersRouter);
+console.log(`注册商家路由: ${API_PREFIX}/merchants`);
 app.use(`${API_PREFIX}/merchants`, merchantsRouter);
+console.log(`注册商品路由: ${API_PREFIX}/products`);
+app.use(`${API_PREFIX}/products`, productsRouter);
+console.log(`注册订单路由: ${API_PREFIX}/orders`);
+app.use(`${API_PREFIX}/orders`, ordersRouter);
 app.use(`${API_PREFIX}/logistics`, logisticsRouter);
 app.use(`${API_PREFIX}/speech`, speechRouter);
 app.use(`${API_PREFIX}/coze`, cozeRouter);
+console.log(`注册视频路由: ${API_PREFIX}/videos`);
+app.use(`${API_PREFIX}/videos`, videosRouter);
+console.log(`注册聊天路由: ${API_PREFIX}/chat`);
+app.use(`${API_PREFIX}/chat`, chatRouter);
 
 app.get('/health', function(req, res) {
   res.json({ status: 'UP', message: 'Server is running' });
@@ -82,9 +97,13 @@ app.get(`${API_PREFIX}`, function(req, res) {
     endpoints: [
       `${API_PREFIX}/users`,
       `${API_PREFIX}/merchants`,
+      `${API_PREFIX}/products`,
+      `${API_PREFIX}/orders`,
       `${API_PREFIX}/logistics`,
       `${API_PREFIX}/speech`,
-      `${API_PREFIX}/coze`
+      `${API_PREFIX}/coze`,
+      `${API_PREFIX}/videos`,
+      `${API_PREFIX}/chat`
     ]
   });
 });

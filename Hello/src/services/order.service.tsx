@@ -165,10 +165,66 @@ class OrderService {
    */
   async confirmReceived(orderId: string, userId: string): Promise<ApiResponse> {
     try {
-      const response = await apiClient.post('/users/orders/confirm', { orderId, userId });
+      const response = await apiClient.post(API_PATHS.ORDER.CONFIRM, { orderId, userId });
       return response;
     } catch (error) {
       console.error('确认收货失败:', error);
+      throw error;
+    }
+  }
+
+  /**
+   * 订单发货
+   * @param {Object} shipData - 发货数据
+   * @returns {Promise<ApiResponse>} - 发货结果
+   */
+  async shipOrder(shipData: {
+    orderId: string;
+    merchantId: string;
+    carrier: string;
+    trackingNumber: string;
+  }): Promise<ApiResponse> {
+    try {
+      const response = await apiClient.post(API_PATHS.ORDER.SHIP, shipData);
+      return response;
+    } catch (error) {
+      console.error('订单发货失败:', error);
+      throw error;
+    }
+  }
+
+  /**
+   * 获取商家订单列表
+   * @param {Object} params - 查询参数
+   * @returns {Promise<ApiResponse>} - 订单列表
+   */
+  async getMerchantOrders(params: {
+    merchantId: string;
+    status?: string;
+    page?: number;
+    limit?: number;
+    search?: string;
+  }): Promise<ApiResponse> {
+    try {
+      const response = await apiClient.post(API_PATHS.ORDER.MERCHANT.LIST, params);
+      return response;
+    } catch (error) {
+      console.error('获取商家订单列表失败:', error);
+      throw error;
+    }
+  }
+  
+  /**
+   * 获取商家订单统计
+   * @param {string} merchantId - 商家ID
+   * @returns {Promise<ApiResponse>} - 统计结果
+   */
+  async getMerchantOrderStats(merchantId: string): Promise<ApiResponse> {
+    try {
+      const response = await apiClient.post(API_PATHS.ORDER.MERCHANT.STATS, { merchantId });
+      return response;
+    } catch (error) {
+      console.error('获取商家订单统计失败:', error);
       throw error;
     }
   }

@@ -7,6 +7,8 @@
 var app = require('../app');
 var debug = require('debug')('hello-after:server');
 var http = require('http');
+var socketIo = require('socket.io');
+var chatService = require('../services/chat.service');
 
 /**
  * Get port from environment and store in Express.
@@ -20,6 +22,24 @@ app.set('port', port);
  */
 
 var server = http.createServer(app);
+
+/**
+ * Initialize Socket.io
+ */
+
+var io = socketIo(server, {
+  cors: {
+    origin: "*", // 允许任何来源连接，生产环境可根据实际需要配置
+    methods: ["GET", "POST"],
+    credentials: true
+  }
+});
+
+// 将Socket.io实例添加到app对象，方便其他地方访问
+app.set('io', io);
+
+// 初始化WebSocket聊天服务
+chatService.initSocketServer(io);
 
 /**
  * Listen on provided port, on all network interfaces.
@@ -87,4 +107,6 @@ function onListening() {
     ? 'pipe ' + addr
     : 'port ' + addr.port;
   debug('Listening on ' + bind);
+  console.log('服务器启动成功，监听端口：', addr.port);
+  console.log('WebSocket服务已初始化');
 }
